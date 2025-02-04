@@ -510,6 +510,7 @@ public class TableFilter implements ColumnResolver {
             if (join != null) {
                 join.reset();
                 if (!join.next()) {
+                    System.out.println("Exhausted join for: " + currentSearchRow.getString());
                     continue;
                 }
             }
@@ -519,6 +520,10 @@ public class TableFilter implements ColumnResolver {
             }
         }
         state = AFTER_LAST;
+
+        String tableOutput = "Table: " + table.getName() + "(alias: " + alias + ")";
+        System.out.println(tableOutput + " has been exhausted after: " + scanCount);
+
         return false;
     }
 

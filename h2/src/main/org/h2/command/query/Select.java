@@ -1866,6 +1866,8 @@ public class Select extends Query {
                 setCurrentRowNumber(rowNumber + 1);
                 // This method may lock rows
                 if (forUpdate ? isConditionMetForUpdate() : isConditionMet()) {
+                    // right here can output state of scan counts starting from top level that shows that for each
+                    // hit we get how many rows in the join chain we need to visit
                     ++rowNumber;
                     Value[] row = new Value[columnCount];
                     for (int i = 0; i < columnCount; i++) {
