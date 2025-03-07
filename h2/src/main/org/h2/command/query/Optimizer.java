@@ -9,8 +9,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.h2.engine.SessionLocal;
@@ -168,6 +170,11 @@ class Optimizer {
         if (currentTables.isEmpty()) {
             return true;
         }
+
+        Set<String> tablesAlreadyInJoin = new HashSet<>();
+        currentTables.stream().forEach(filter -> tablesAlreadyInJoin.add(filter.getTable().getName()));
+
+        Set<String> tablesEligibleForAdding = new HashSet<>();
 
         List<Expression> expressionsToConsider = new ArrayList<>();
         expressionsToConsider.add(potentialNext.getFullCondition());
