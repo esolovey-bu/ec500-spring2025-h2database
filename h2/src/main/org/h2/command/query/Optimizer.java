@@ -5,21 +5,29 @@
  */
 package org.h2.command.query;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
+
 import org.h2.engine.SessionLocal;
 import org.h2.expression.Expression;
 import org.h2.table.Plan;
 import org.h2.table.PlanItem;
+import org.h2.table.Table;
 import org.h2.table.TableFilter;
 import org.h2.util.Permutations;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The optimizer is responsible to find the best execution plan
  * for a given query.
  */
 class Optimizer {
-
     private static final int MAX_BRUTE_FORCE_FILTERS = 7;
     private static final int MAX_BRUTE_FORCE = 2000;
     private static final int MAX_GENETIC = 500;
@@ -82,7 +90,8 @@ class Optimizer {
         } else {
             startNs = System.nanoTime();
             if (filters.length <= MAX_BRUTE_FORCE_FILTERS) {
-                calculateBruteForceAll(isSelectCommand);
+//                calculateBruteForceAll(isSelectCommand);
+                calculateRuleBasedPlan(isSelectCommand);
             } else {
                 calculateBruteForceSome(isSelectCommand);
                 random = new Random(0);
@@ -114,6 +123,80 @@ class Optimizer {
 //        for (int x = 0; !canStop(x) && p.next(); x++) {
 //            testPlan(list, isSelectCommand);
 //        }
+    }
+
+    void calculateRuleBasedPlan(boolean isSelectCommand){
+        List<TableFilter> resultingOrder = new ArrayList<>();
+
+        List<TableFilter> filtersList = new ArrayList<>(Arrays.asList(filters));
+        for (TableFilter filter : filtersList){
+            Table table = filter.getTable();
+            long rowCount = table.getRowCount(session);
+
+            System.out.println(table.getName() + " row count: " + rowCount);
+        }
+
+        while (!filtersList.isEmpty()){
+            List<TableFilter> validCandidates = filtersList.stream().filter(
+                table -> canAddToCurrentSet(resultingOrder, table)).collect(Collectors.toList());
+
+            System.out.println("valid candidates: " + validCandidates);
+
+            TableFilter fewestRows = validCandidates.stream().min(Comparator.comparingLong(filter -> getRowCount(filter))).get();
+            resultingOrder.add(fewestRows);
+            filtersList.remove(fewestRows);
+        }
+
+        System.out.println("Result: " + resultingOrder);
+        TableFilter[] resultArray = resultingOrder.toArray(new TableFilter[0]);
+        testPlan(resultArray, isSelectCommand);
+    }
+
+    long getRowCount(TableFilter filter){
+        return filter.getTable().getRowCount(session);
+    }
+
+    String getTableNameOrAlias(Expression expression){
+        if (expression.getTableName() != null) {
+            return expression.getTableName();
+        }
+
+        return expression.getTableAlias();
+    }
+
+    boolean canAddToCurrentSet(List<TableFilter> currentTables, TableFilter potentialNext) {
+        if (currentTables.isEmpty()) {
+            return true;
+        }
+
+        List<Expression> expressionsToConsider = new ArrayList<>();
+        expressionsToConsider.add(potentialNext.getFullCondition());
+
+        while (!expressionsToConsider.isEmpty()){
+            Expression current = expressionsToConsider.remove(0);
+            // looking for expressions that have a left and right leaf expression each involving a different table
+
+            if (current.getSubexpressionCount() == 2 &&
+                current.getSubexpression(0).getSubexpressionCount() == 0 &&
+                current.getSubexpression(1).getSubexpressionCount() == 0)
+            {
+                String leftTable = getTableNameOrAlias(current.getSubexpression(0));
+                String rightTable = getTableNameOrAlias(current.getSubexpression(1));
+
+                if (leftTable != null && rightTable != null && !leftTable.equals(rightTable)) {
+                    System.out.println("Found join expression: " + current);
+                    continue;
+                }
+            }
+
+            for (int sub = 0; sub < current.getSubexpressionCount(); sub++){
+                expressionsToConsider.add(current.getSubexpression(sub));
+            }
+        }
+
+
+        // at least one of the tables in the current set must have a join expression against table under consideration
+        return false;
     }
 
     private void calculateBruteForceSome(boolean isSelectCommand) {

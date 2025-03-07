@@ -980,6 +980,10 @@ public class TableFilter implements ColumnResolver {
         }
     }
 
+    public Expression getFullCondition(){
+        return fullCondition;
+    }
+
     public void setEvaluatable(boolean evaluatable) {
         this.evaluatable = evaluatable;
     }
