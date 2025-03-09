@@ -32,6 +32,6 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build and Execute Tests
-      run:
+      run: |
         cd h2
         mvn clean test -Dtest=RuleBasedJoinOrderPickerTest
