@@ -122,9 +122,9 @@ class Optimizer {
         p.next();
         testPlan(list, isSelectCommand);
 
-//        for (int x = 0; !canStop(x) && p.next(); x++) {
-//            testPlan(list, isSelectCommand);
-//        }
+        for (int x = 0; !canStop(x) && p.next(); x++) {
+            testPlan(list, isSelectCommand);
+        }
     }
 
     void calculateRuleBasedPlan(boolean isSelectCommand){
@@ -155,7 +155,12 @@ class Optimizer {
     }
 
     long getRowCount(TableFilter filter){
-        return filter.getTable().getRowCount(session);
+        long rowCountApprox = filter.getTable().getRowCountApproximation(session);
+        long rowCountA = filter.getTable().getRowCount(session);
+
+        System.out.println("Appeox " + rowCountApprox + " actual " + rowCountA);
+
+        return rowCountApprox;
     }
 
     String getTableNameOrAlias(Expression expression){
@@ -192,6 +197,17 @@ class Optimizer {
 
                 if (leftTable != null && rightTable != null && !leftTable.equals(rightTable)) {
                     System.out.println("Found join expression: " + current);
+
+                    if (tablesAlreadyInJoin.contains(leftTable)) {
+                        System.out.println("Because " + leftTable + " is already in, adding: " + rightTable);
+                        tablesEligibleForAdding.add(rightTable);
+                    }
+
+                    if (tablesAlreadyInJoin.contains(rightTable)){
+                        System.out.println("Because " + rightTable + " is already in, adding: " + leftTable);
+                        tablesEligibleForAdding.add(leftTable);
+                    }
+
                     continue;
                 }
             }
@@ -201,9 +217,7 @@ class Optimizer {
             }
         }
 
-
-        // at least one of the tables in the current set must have a join expression against table under consideration
-        return false;
+        return tablesEligibleForAdding.contains(potentialNext.getTable().getName());
     }
 
     private void calculateBruteForceSome(boolean isSelectCommand) {
