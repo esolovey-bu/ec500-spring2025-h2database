@@ -113,8 +113,8 @@ public final class Comparison extends Condition {
     public static final int IN_QUERY = 12;
 
     private int compareType;
-    private Expression left;
-    private Expression right;
+    Expression left;
+    Expression right;
     private final boolean whenOperand;
 
     public Comparison(int compareType, Expression left, Expression right, boolean whenOperand) {
@@ -122,6 +122,14 @@ public final class Comparison extends Condition {
         this.right = right;
         this.compareType = compareType;
         this.whenOperand = whenOperand;
+    }
+
+    Expression getLeft(){
+        return left;
+    }
+
+    Expression getRight(){
+        return right;
     }
 
     @Override
