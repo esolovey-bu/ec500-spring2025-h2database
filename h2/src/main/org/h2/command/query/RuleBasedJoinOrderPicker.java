@@ -63,6 +63,7 @@ public class RuleBasedJoinOrderPicker {
       filtersList.remove(fewestRows);
     }
 
+    System.out.println("Best order is: " + resultingOrder);
     return resultingOrder.toArray(new TableFilter[0]);
   }
 
