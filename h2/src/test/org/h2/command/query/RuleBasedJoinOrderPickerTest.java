@@ -67,7 +67,7 @@ public class RuleBasedJoinOrderPickerTest {
 
     orderLinesTable = Mockito.mock(Table.class);
     Mockito.when(orderLinesTable.getName()).thenReturn("orderLines");
-    Mockito.when(ordersTable.getRowCountApproximation(mockSession)).thenReturn(5000L);
+    Mockito.when(orderLinesTable.getRowCountApproximation(mockSession)).thenReturn(5000L);
 
     // locations (15 rows)
     //  -> location_id
@@ -170,6 +170,42 @@ public class RuleBasedJoinOrderPickerTest {
     List<TableFilter> expectedFilters = List.of(locationsFilter, customersFilter, ordersFilter);
 
     TableFilter[] inputFilters = {customersFilter, ordersFilter, locationsFilter};
+
+    ruleBasedJoinOrderPicker = new RuleBasedJoinOrderPicker(mockSession, inputFilters);
+    List<TableFilter> result = Arrays.asList(ruleBasedJoinOrderPicker.bestOrder());
+
+    assertEquals(expectedFilters, result);
+  }
+
+  @Test
+  public void bestOrder_fourTablesMultipleJoins(){
+    Expression fullCondition = new ConditionAndOrN(ConditionAndOr.AND,
+        List.of(
+            new Comparison(Comparison.EQUAL, locationsLocationId, customersLocationId, false),
+            new Comparison(Comparison.EQUAL, locationsLocationId, ordersLocationId, false),
+            new Comparison(Comparison.EQUAL, customersCustomerId, ordersCustomerId, false),
+            new Comparison(Comparison.EQUAL, orderLinesLocationId, locationsLocationId, false),
+            new Comparison(Comparison.EQUAL, orderLinesOrderId, ordersOrderId, false),
+            new Comparison(Comparison.EQUAL, orderLinesCustomerId, customersCustomerId, false)
+        )
+    );
+
+    TableFilter locationsFilter = new TableFilter(mockSession, locationsTable, "locations", true, null, 0, null);
+    locationsFilter.setFullCondition(fullCondition);
+
+    TableFilter customersFilter = new TableFilter(mockSession, customersTable, "customers", true, null, 0, null);
+    customersFilter.setFullCondition(fullCondition);
+
+    TableFilter ordersFilter = new TableFilter(mockSession, ordersTable, "orders", true, null, 0, null);
+    ordersFilter.setFullCondition(fullCondition);
+
+    TableFilter orderLinesFilter = new TableFilter(mockSession, orderLinesTable, "orderLines", true, null, 0, null);
+    orderLinesFilter.setFullCondition(fullCondition);
+
+    // size order is locations, customers, orders, orderLines
+    List<TableFilter> expectedFilters = List.of(locationsFilter, customersFilter, ordersFilter, orderLinesFilter);
+
+    TableFilter[] inputFilters = {orderLinesFilter, customersFilter, ordersFilter, locationsFilter};
 
     ruleBasedJoinOrderPicker = new RuleBasedJoinOrderPicker(mockSession, inputFilters);
     List<TableFilter> result = Arrays.asList(ruleBasedJoinOrderPicker.bestOrder());
